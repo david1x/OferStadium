@@ -18,7 +18,7 @@ url = r"https://www.haifa-stadium.co.il/%d7%9c%d7%95%d7%97_%d7%94%d7%9e%d7%a9%d7
 
 # Telegram 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID =  [os.getenv("DAVID_ID")]#,os.getenv("SHIR_ID"),]
+CHAT_ID =  [os.getenv("DAVID_ID"),os.getenv("SHIR_ID")]
 
 async def get_paragraphs_with_dates(url):
     async with async_playwright() as p:
