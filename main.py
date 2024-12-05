@@ -95,5 +95,3 @@ check_and_notify()
 # pprint.pprint(games)
 
 
-
-# Telegram BOT: "https://api.telegram.org/bot7747892327:AAENuEY6lKTwKw1jGaVaz5NWjLYOuv15uBw/getUpdates"
