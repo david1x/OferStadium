@@ -64,11 +64,10 @@ def send_telegram_message(bot_token, chat_id, message):
             print(f"Failed to send message: {response.text}")
 
 def check_and_notify():
-    now = datetime.now()
-    # now = datetime(2024, 12, 8, 12, 45) # for tests
-    run_time = now.time().replace(second=0, microsecond=0)
+    now = datetime.now().replace(minute=0, second=0, microsecond=0)
+    # now = datetime(2024, 12, 14, 14, 1).replace(minute=0, second=0, microsecond=0) # for tests
     today = now.date()
-    # tomorrow_8_pm = now + timedelta(days=1, hours=20-now.hour, minutes=-now.minute)
+
     start_time_8_pm = now.replace(hour=20, minute=0, second=0, microsecond=0)
     end_time_8_pm = start_time_8_pm + timedelta(days=1, minutes=59)
     
@@ -76,22 +75,34 @@ def check_and_notify():
         event_time = event['when']
         event_teams = event['who']
         
+        delta = event_time - now
+        delta_minutes = delta.seconds / 60
+        delta_hours = delta_minutes / 60
+        
         # 24-hour check at 8 PM
-        if now.hour == 20:  # Enable entire 8 PM hour
+        if 0 > delta.days < 2 and  delta_hours >= 20:  # Enable entire 8 PM hour
             if start_time_8_pm <= event_time <= end_time_8_pm:
                 message = f"⚽ תזכורת: \n⚽{event_teams} \n⚽ מחר ב - {event_time.strftime('%H:%M')}"
                 send_telegram_message(BOT_TOKEN, CHAT_ID, message)
+                return
         
         # 12 PM same day check
-        elif now.hour == 12:
+        elif delta.days == 0 and delta_hours >= 3:
             if event_time.date() == today and event_time.time() >= now.time():
                 message = f"⚽ תזכורת: \n⚽ {event_teams} \n⚽ היום ב - {event_time.strftime('%H:%M')}"
                 send_telegram_message(BOT_TOKEN, CHAT_ID, message)
+                return
+    
+    print("No Games in the next 24 hours. no message was sent.")
+    # print(f"GAMES: {games}")
+            
 
 
-
-asyncio.run(get_paragraphs_with_dates(url))
-check_and_notify()
+try:
+    asyncio.run(get_paragraphs_with_dates(url))
+    check_and_notify()
+except Exception as e:
+    print(f"Exception: {e}")
 # pprint.pprint(games)
 
 
