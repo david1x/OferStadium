@@ -65,7 +65,7 @@ def send_telegram_message(bot_token, chat_id, message):
 
 def check_and_notify():
     now = datetime.now().replace(minute=0, second=0, microsecond=0)
-    # now = datetime(2024, 12, 14, 14, 1).replace(minute=0, second=0, microsecond=0) # for tests
+    # now = datetime(2024, 12, 26, 14, 1).replace(minute=0, second=0, microsecond=0) # for tests
     today = now.date()
 
     start_time_8_pm = now.replace(hour=20, minute=0, second=0, microsecond=0)
@@ -80,7 +80,7 @@ def check_and_notify():
         delta_hours = delta_minutes / 60
         
         # 24-hour check at 8 PM
-        if 0 > delta.days < 2 and  delta_hours >= 20:  # Enable entire 8 PM hour
+        if (0 < delta.days < 2)  or  (delta.days < 1 and delta_hours >= 20):  # Enable entire 8 PM hour
             if start_time_8_pm <= event_time <= end_time_8_pm:
                 message = f"⚽ תזכורת: \n⚽{event_teams} \n⚽ מחר ב - {event_time.strftime('%H:%M')}"
                 send_telegram_message(BOT_TOKEN, CHAT_ID, message)
