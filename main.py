@@ -50,7 +50,7 @@ async def get_paragraphs_with_dates(url):
                 num += 1
         await browser.close()
 
-def send_telegram_message(bot_token, chat_id, message):
+def send_telegram_message(bot_token: str, chat_id: list, message: str):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     for id in chat_id:
         payload = {
@@ -94,15 +94,15 @@ def check_and_notify():
                 return
     
     print("No Games in the next 24 hours. no message was sent.")
-    # print(f"GAMES: {games}")
-            
 
 
-try:
-    asyncio.run(get_paragraphs_with_dates(url))
-    check_and_notify()
-except Exception as e:
-    print(f"Exception: {e}")
-# pprint.pprint(games)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(get_paragraphs_with_dates(url))
+        check_and_notify()
+    except Exception as e:
+        print(f"Exception: {e}")
+
 
 
