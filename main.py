@@ -1,5 +1,6 @@
 from playwright.async_api import async_playwright
 from datetime import datetime, time, timedelta
+from typing import Pattern
 import asyncio
 import dotenv
 import requests
@@ -13,12 +14,16 @@ dotenv.load_dotenv()
 date_pattern = re.compile(
     r'\b\d{2}/\d{2}/(\d{2}|\d{4})(?:\s+\d{2}:\d{2})?\b'
 )
-games = {}
-url = r"https://www.haifa-stadium.co.il/%d7%9c%d7%95%d7%97_%d7%94%d7%9e%d7%a9%d7%97%d7%a7%d7%99%d7%9d_%d7%91%d7%90%d7%a6%d7%98%d7%93%d7%99%d7%95%d7%9f/"
+
+games: dict = {}
+url: str = r"https://www.haifa-stadium.co.il/%d7%9c%d7%95%d7%97_%d7%94%d7%9e%d7%a9%d7%97%d7%a7%d7%99%d7%9d_%d7%91%d7%90%d7%a6%d7%98%d7%93%d7%99%d7%95%d7%9f/"
 
 # Telegram 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID =  [os.getenv("DAVID_ID"),os.getenv("SHIR_ID")]
+BOT_TOKEN: str | None = os.getenv("BOT_TOKEN") or ''
+DAVID_CHAT_ID: str = os.getenv("DAVID_ID") or ''
+SHIR_CHAT_ID: str = os.getenv("SHIR_ID") or ''
+ELAD_CHAT_ID: str = os.getenv("ELAD_ID") or ''
+CHAT_ID: list[str] =  [ DAVID_CHAT_ID, SHIR_CHAT_ID, ELAD_CHAT_ID ]
 
 async def get_paragraphs_with_dates(url):
     async with async_playwright() as p:
@@ -50,10 +55,10 @@ async def get_paragraphs_with_dates(url):
                 num += 1
         await browser.close()
 
-def send_telegram_message(bot_token: str, chat_id: list, message: str):
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+def send_telegram_message(bot_token: str, chat_id: list[str], message: str):
+    url: str = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     for id in chat_id:
-        payload = {
+        payload: dict = {
             "chat_id": id,
             "text": message
         }
@@ -67,7 +72,7 @@ def check_and_notify():
     now = datetime.now().replace(minute=0, second=0, microsecond=0)
     # now = datetime(2024, 12, 26, 14, 1).replace(minute=0, second=0, microsecond=0) # for tests
     today = now.date()
-
+    
     start_time_8_pm = now.replace(hour=20, minute=0, second=0, microsecond=0)
     end_time_8_pm = start_time_8_pm + timedelta(days=1, minutes=59)
     
