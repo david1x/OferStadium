@@ -19,7 +19,7 @@ BOT_TOKEN: str | None = os.getenv("BOT_TOKEN") or ''
 DAVID_CHAT_ID: str = os.getenv("DAVID_ID") or ''
 SHIR_CHAT_ID: str = os.getenv("SHIR_ID") or ''
 ELAD_CHAT_ID: str = os.getenv("ELAD_ID") or ''
-CHAT_ID: list[str] =  [ DAVID_CHAT_ID]#, SHIR_CHAT_ID, ELAD_CHAT_ID ]
+CHAT_ID: list[str] =  [ DAVID_CHAT_ID, SHIR_CHAT_ID, ELAD_CHAT_ID ]
 GAMES: dict = {}
 
 async def get_paragraphs_with_dates(url) -> None:
@@ -94,13 +94,17 @@ def send_event_reminder(event_teams, event_day, event_time, day_text) -> None:
     message = f"⚽ תזכורת: \n⚽ {event_teams} \n⚽ {day_text} ( {event_day} ) ב - {event_time.strftime('%H:%M')}"
     send_telegram_photo(BOT_TOKEN, CHAT_ID, "latestGame.png", caption=message, parse_mode='Markdown')
 
-        
 def check_and_notify(is_debug=False):
+    """
+    Checks the scheduled games and sends notifications if there are games today after 12 PM or tomorrow after 12 PM.
+
+    Args:
+        is_debug (bool): If True, uses a fixed datetime for testing purposes. Defaults to False.
+    """
+    now = datetime.now().replace(minute=0, second=0, microsecond=0)
     if is_debug:
         pprint.pprint(GAMES, indent=4)
-        now = datetime(2025, 2, 15, 12, 1).replace(minute=0, second=0, microsecond=0) 
-    else:
-        now = datetime.now().replace(minute=0, second=0, microsecond=0)   
+        now = now.replace(year=2025, month=2, day=14, hour=20)  
         
     for event in GAMES.values():
         event_time = event['when']
@@ -109,19 +113,19 @@ def check_and_notify(is_debug=False):
 
         current_time = now
         
-        is_after_noon = event_time.hour >= 12
-        is_today_after_noon = event_time.date() == current_time.date() and is_after_noon  # Check if the event is today after 12 PM
+        is_event_after_noon = event_time.hour >= 12
+        is_today_after_noon = event_time.date() == current_time.date() and is_event_after_noon  # Check if the event is today after 12 PM
         is_tomorrow = event_time.date() == (current_time + timedelta(days=1)).date()
         
         # Check if current time is 12 PM
-        if is_today_after_noon:
-            if event_time.date() == current_time.date() and event_time.hour >= 12: # Check if the event is today after 12 PM
+        if current_time.hour == 12:
+            if is_today_after_noon: # Check if the event is today after 12 PM
                 send_event_reminder(event_teams, event_day, event_time, "היום")
                 return
-            
+    
         # Check if current time is 8 PM
         elif current_time.hour == 20:
-            if is_tomorrow and is_after_noon:
+            if is_tomorrow and is_event_after_noon:
                 send_event_reminder(event_teams, event_day, event_time, "מחר")
                 return
     
@@ -132,7 +136,7 @@ if __name__ == "__main__":
     try:
         url: str = r"https://www.haifa-stadium.co.il/%d7%9c%d7%95%d7%97_%d7%94%d7%9e%d7%a9%d7%97%d7%a7%d7%99%d7%9d_%d7%91%d7%90%d7%a6%d7%98%d7%93%d7%99%d7%95%d7%9f/"
         asyncio.run(get_paragraphs_with_dates(url))
-        check_and_notify(is_debug=True)
+        check_and_notify(is_debug=False)
     except Exception as e:
         print(f"Exception: {e}")
 
