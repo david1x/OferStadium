@@ -11,7 +11,7 @@ dotenv.load_dotenv()
 
 # Regular expression pattern for dd/mm/yyyy or dd/mm/yy with optional time (HH:MM)
 DATE_PATTERN = re.compile(
-    r'\b\d{2}/\d{2}/(\d{2}|\d{4})(?:\s+\d{2}:\d{2})?\b'
+    r'\b\d{1,2}/\d{1,2}(?:/(?:\d{2}|\d{4}))?(?:\s+\d{2}:\d{2})?\b'
 )
 
 # Telegram 
@@ -29,32 +29,61 @@ async def get_paragraphs_with_dates(url) -> None:
         await page.set_viewport_size({"width": 500, "height": 1080})
         await page.goto(url)
         await page.screenshot(path="latestGame.png", clip={"x": 50, "y": 460, "width": 400, "height": 290})
-        
-        
+
+        # Hebrew day names for matching
+        HEBREW_DAYS = [
+            "יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי", "יום שבת",
+            "ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"
+        ]
+
         # Get all paragraph elements
         paragraphs = await page.locator("p").all_text_contents()
         num = 0
         for i, paragraph in enumerate(paragraphs):
             if DATE_PATTERN.search(paragraph):
-                game_day = paragraph.split(" ")[0].replace('\xa0', '')
-                game_date = paragraph.split(" ")[1].replace('\xa0', '')
-                game_time = paragraph.split(" ")[2].replace('\xa0', '')
-                # print(f"When: {game_date} - {game_time}")
-                
+                # Extract day (first match from HEBREW_DAYS)
+                game_day = next((d for d in HEBREW_DAYS if d in paragraph), "")
+
+                # Extract date (first match of DATE_PATTERN)
+                date_match = DATE_PATTERN.search(paragraph)
+                game_date = date_match.group(0) if date_match else ""
+
+                # Extract time (last match of HH:MM)
+                time_match = re.findall(r'\d{1,2}:\d{2}', paragraph)
+                game_time = time_match[-1] if time_match else ""
+
+                # Remove game_time from game_date if present
+                if game_time and game_time in game_date:
+                    game_date = game_date.replace(game_time, "").strip()
+
+                # print(f"When: {game_day} - {game_date} - {game_time}")
+
                 try:
+                    # Try parsing with short year
                     GAMES[num] =  {
                         "who": f"{paragraphs[i-1]} נגד {paragraphs[i+1]}",
-                        "when": datetime.strptime(f"{game_date} {game_time}", '%d/%m/%y %H:%M'), # 01/02/25 20:00
+                        "when": datetime.strptime(f"{game_date} {game_time}", '%d/%m/%y %H:%M'),
                         "day": game_day
                     }
-                    # print(datetime.strptime(f"{game_date} {game_time}", '%d/%m/%y %H:%M'))
-                except ValueError as e:
-                    GAMES[num] =  {
-                        "who": f"{paragraphs[i-1]} נגד {paragraphs[i+1]}",
-                        "when": datetime.strptime(f"{game_date} {game_time}", '%d/%m/%Y %H:%M'), # 01/02/2025 20:00
-                        "day": game_day
-                    }
-                    # print(datetime.strptime(f"{game_date} {game_time}", '%d/%m/%Y %H:%M'))
+                except ValueError:
+                    try:
+                        # Try parsing with long year
+                        GAMES[num] =  {
+                            "who": f"{paragraphs[i-1]} נגד {paragraphs[i+1]}",
+                            "when": datetime.strptime(f"{game_date} {game_time}", '%d/%m/%Y %H:%M'),
+                            "day": game_day
+                        }
+                    except ValueError:
+                        # Try parsing without year (assume current year)
+                        try:
+                            this_year = datetime.now().year
+                            GAMES[num] =  {
+                                "who": f"{paragraphs[i-1]} נגד {paragraphs[i+1]}",
+                                "when": datetime.strptime(f"{game_date}/{this_year} {game_time}", '%d/%m/%Y %H:%M'),
+                                "day": game_day
+                            }
+                        except Exception as e:
+                            print(f"Failed to parse date/time for paragraph: {paragraph} ({e})")
                 num += 1
         await browser.close()
 
@@ -104,7 +133,7 @@ def check_and_notify(is_debug=False):
     now = datetime.now().replace(minute=0, second=0, microsecond=0)
     if is_debug:
         pprint.pprint(GAMES, indent=4)
-        now = now.replace(year=2025, month=2, day=14, hour=20)  
+        now = now.replace(year=2025, month=7, day=18, hour=20)  
         
     for event in GAMES.values():
         event_time = event['when']
