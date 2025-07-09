@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'deepin' }
 
     environment {
         VENV_DIR = 'venv'
