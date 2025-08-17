@@ -6,6 +6,11 @@ import requests
 import pprint
 import os
 import re
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from PIL import Image
+import io
 
 dotenv.load_dotenv()
 
@@ -19,16 +24,30 @@ BOT_TOKEN: str | None = os.getenv("BOT_TOKEN") or ''
 DAVID_CHAT_ID: str = os.getenv("DAVID_ID") or ''
 SHIR_CHAT_ID: str = os.getenv("SHIR_ID") or ''
 ELAD_CHAT_ID: str = os.getenv("ELAD_ID") or ''
-CHAT_ID: list[str] =  [ DAVID_CHAT_ID, SHIR_CHAT_ID, ELAD_CHAT_ID ]
+CHAT_ID: list[str] =  [ DAVID_CHAT_ID],# SHIR_CHAT_ID, ELAD_CHAT_ID ]
+SELENIUM_URL: str = os.getenv("SELENIUM_URL") or 'http://localhost:4444/wd/hub'
 GAMES: dict = {}
 
-async def get_paragraphs_with_dates(url) -> None:
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.set_viewport_size({"width": 500, "height": 1080})
-        await page.goto(url)
-        await page.screenshot(path="latestGame.png", clip={"x": 50, "y": 460, "width": 400, "height": 290})
+def get_paragraphs_with_dates(url) -> None:
+    chrome_options = Options()
+    # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--window-size=500,1080")
+
+    # Connect to Selenium Grid (update the URL to your grid hub)
+    driver = webdriver.Remote(
+        command_executor=SELENIUM_URL,  # Change to your grid address
+        options=chrome_options
+    )
+
+    try:
+        driver.get(url)
+
+        # Take full screenshot
+        png = driver.get_screenshot_as_png()
+        image = Image.open(io.BytesIO(png))
+        # Crop to match Playwright's clip
+        cropped = image.crop((50, 460, 450, 750))  # (left, upper, right, lower)
+        cropped.save("latestGame.png")
 
         # Hebrew day names for matching
         HEBREW_DAYS = [
@@ -37,7 +56,7 @@ async def get_paragraphs_with_dates(url) -> None:
         ]
 
         # Get all paragraph elements
-        paragraphs = await page.locator("p").all_text_contents()
+        paragraphs = [p.text for p in driver.find_elements(By.TAG_NAME, "p")]
         num = 0
         for i, paragraph in enumerate(paragraphs):
             if DATE_PATTERN.search(paragraph):
@@ -85,7 +104,8 @@ async def get_paragraphs_with_dates(url) -> None:
                         except Exception as e:
                             print(f"Failed to parse date/time for paragraph: {paragraph} ({e})")
                 num += 1
-        await browser.close()
+    finally:
+        driver.quit()
 
 def send_telegram_message(bot_token: str, chat_id: list[str], message: str, parse_mode: str = 'HTML') -> None:
     url: str = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -164,7 +184,7 @@ def check_and_notify(is_debug=False):
 if __name__ == "__main__":
     try:
         url: str = r"https://www.haifa-stadium.co.il/%d7%9c%d7%95%d7%97_%d7%94%d7%9e%d7%a9%d7%97%d7%a7%d7%99%d7%9d_%d7%91%d7%90%d7%a6%d7%98%d7%93%d7%99%d7%95%d7%9f/"
-        asyncio.run(get_paragraphs_with_dates(url))
+        get_paragraphs_with_dates(url)
         check_and_notify(is_debug=False)
     except Exception as e:
         print(f"Exception: {e}")
